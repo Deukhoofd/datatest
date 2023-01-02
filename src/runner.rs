@@ -125,21 +125,21 @@ impl rustc_test::TDynBenchFn for FilesBenchFn {
 }
 
 impl<'r> Fn<(&'r mut Bencher,)> for FilesBenchFn {
-    extern "rust-call" fn call(&self, (bencher,): (&'r mut Bencher,)) {
-        (self.0)(bencher, &self.1[..]);
+    extern "rust-call" fn call(&self, (bencher,): (&'r mut Bencher,)) -> Self::Output {
+        Ok((self.0)(bencher, &self.1[..]))
     }
 }
 
 impl<'r> FnOnce<(&'r mut Bencher,)> for FilesBenchFn {
-    type Output = ();
-    extern "rust-call" fn call_once(self, harness: (&'r mut Bencher,)) {
-        (self.0)(harness.0, &self.1)
+    type Output = Result<(), String>;
+    extern "rust-call" fn call_once(self, harness: (&'r mut Bencher,)) -> Self::Output {
+        Ok((self.0)(harness.0, &self.1))
     }
 }
 
 impl<'r> FnMut<(&'r mut Bencher,)> for FilesBenchFn {
-    extern "rust-call" fn call_mut(&mut self, harness: (&'r mut Bencher,)) {
-        (self.0)(harness.0, &self.1)
+    extern "rust-call" fn call_mut(&mut self, harness: (&'r mut Bencher,))-> Self::Output {
+        Ok((self.0)(harness.0, &self.1))
     }
 }
 
@@ -183,7 +183,7 @@ fn render_files_test(desc: &FilesTestDesc, rendered: &mut Vec<TestDescAndFn>) {
                     .map_or(false, |ignore_func| ignore_func(&path));
 
             let testfn = match desc.testfn {
-                FilesTestFn::TestFn(testfn) => TestFn::DynTestFn(Box::new(move || testfn(&paths))),
+                FilesTestFn::TestFn(testfn) => TestFn::DynTestFn(Box::new(move || Ok(testfn(&paths)))),
                 FilesTestFn::BenchFn(benchfn) => {
                     TestFn::DynBenchFn(Box::new(FilesBenchFn(benchfn, paths)))
                 }
@@ -235,8 +235,8 @@ fn render_data_test(desc: &DataTestDesc, rendered: &mut Vec<TestDescAndFn>) {
         };
 
         let testfn = match case.case {
-            DataTestFn::TestFn(testfn) => TestFn::DynTestFn(testfn),
-            DataTestFn::BenchFn(benchfn) => TestFn::DynBenchFn(benchfn),
+            DataTestFn::TestFn(testfn) => TestFn::DynTestFn(Box::new(move || Ok(testfn()))),
+            DataTestFn::BenchFn(benchfn) => TestFn::DynBenchFn(Box::new(move |v| Ok(benchfn(v)))),
         };
 
         // Generate a standard test descriptor
@@ -446,7 +446,7 @@ fn render_test_descriptor(
                     #[cfg(feature = "rustc_test_Ignore_messages")]
                     ignore_message: None,
                 },
-                testfn: TestFn::StaticTestFn(desc.testfn),
+                testfn: TestFn::StaticTestFn(|| {Ok(())}),
             })
         }
     }
