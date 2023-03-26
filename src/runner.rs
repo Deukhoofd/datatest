@@ -203,6 +203,11 @@ fn render_files_test(desc: &FilesTestDesc, rendered: &mut Vec<TestDescAndFn>) {
                     compile_fail: false,
                     #[cfg(feature = "rustc_test_Ignore_messages")]
                     ignore_message: None,
+                    source_file: path.to_str().unwrap(),
+                    start_line: 0,
+                    start_col: 0,
+                    end_line: 0,
+                    end_col: 0,
                 },
                 testfn,
             };
